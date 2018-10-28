@@ -36,16 +36,28 @@ def detect_emotions(bot, update):
     response = requests.get(url)
     response_content = response.content
     rekognition_response = rekognition.detect_faces(Image={'Bytes': response_content}, Attributes=['ALL'])
-    res = rekognition_response['FaceDetails'][0]['Emotions']
-    message = 'There is\n'
-    for em in res:
-        conf = int(em['Confidence'])
-        type = em['Type']
-        em_out = str(conf) + ' percent probability that person in this photo is ' + type +'\n'
-        message += em_out
-    bot.sendMessage(chat_id=update.message.chat_id,
-                    text=message)
-    print(message)
+    faces = rekognition_response['FaceDetails']
+    if len(faces) > 1 :
+        bot.sendMessage(chat_id=update.message.chat_id,
+                       text="There are multiple people in this photo! I will analyze them one-by-one:")
+        for i in range (0, len(faces)):
+            message = "Person number " + str(i+1) + "\n"
+            emotions = faces[i]['Emotions']
+            for em in emotions:
+                conf = int(em['Confidence'])
+                type = em['Type']
+                em_out = str(conf) + ' percent probability that person in this photo is ' + type + '\n'
+                message += em_out
+            bot.sendMessage(chat_id=update.message.chat_id, text=message)
+    else:
+        message = 'There is\n'
+        emotions = faces[0]['Emotions']
+        for em in emotions:
+            conf = int(em['Confidence'])
+            type = em['Type']
+            em_out = str(conf) + ' percent probability that person in this photo is ' + type +'\n'
+            message += em_out
+        bot.sendMessage(chat_id=update.message.chat_id, text=message)
 
 updater = Updater(token=token, request_kwargs=REQUEST_KWARGS)
 dispatcher = updater.dispatcher
