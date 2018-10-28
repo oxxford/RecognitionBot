@@ -44,18 +44,18 @@ def detect_emotions(bot, update):
             message = "Person number " + str(i+1) + "\n"
             emotions = faces[i]['Emotions']
             for em in emotions:
-                conf = int(em['Confidence'])
+                conf = em['Confidence']
                 type = em['Type']
-                em_out = str(conf) + ' percent probability that person in this photo is ' + type + '\n'
+                em_out = ("%.2f" % conf) + '% probability that person in this photo is ' + type + '\n'
                 message += em_out
             bot.sendMessage(chat_id=update.message.chat_id, text=message)
     else:
         message = 'There is\n'
         emotions = faces[0]['Emotions']
         for em in emotions:
-            conf = int(em['Confidence'])
+            conf = em['Confidence']
             type = em['Type']
-            em_out = str(conf) + ' percent probability that person in this photo is ' + type +'\n'
+            em_out = ("%.2f" % conf) + '% probability that person in this photo is ' + type +'\n'
             message += em_out
         bot.sendMessage(chat_id=update.message.chat_id, text=message)
 
