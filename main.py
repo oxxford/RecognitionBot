@@ -4,9 +4,9 @@ from telegram.ext import MessageHandler
 from telegram.ext import Filters
 import boto3, requests
 
-token = '709661490:AAG6OK_phXyJ1E2_ALwK5HR0eylsTEjBd5A'
+token = 
 REQUEST_KWARGS = {
-    'proxy_url': 'socks5://vilunov.me:1488/'
+
 }
 
 s3 = boto3.resource('s3')
@@ -30,13 +30,10 @@ def start(bot, update):
 def photo(bot, update):
     file_id = update.message.photo[-1].file_id
     newFile = bot.getFile(file_id)
-    #newFile.download('test.jpg')
-    bot.sendMessage(chat_id=update.message.chat_id, text="download succesfull")
-    #url = 'https://api.telegram.org/bot'+token+'/getFile?file_id=' + file_id
-    #response1 = requests.get(url)
-    #response1_content = response1.content
-    #filePath = response1_content['result']['file_path']
-    url = 'https://api.telegram.org/file/bot' + token + '/' + 'photos/file_0.jpg'
+    bot.sendMessage(chat_id=update.message.chat_id, text="received the pic")
+    filePath = newFile.file_path
+    truePath = filePath[filePath.find('photos'):]
+    url = 'https://api.telegram.org/file/bot' + token + '/' + truePath
     response = requests.get(url)
     response_content = response.content
     rekognition_response = rekognition.detect_faces(Image={'Bytes': response_content}, Attributes=['ALL'])
