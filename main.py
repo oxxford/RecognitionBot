@@ -5,9 +5,9 @@ from telegram.ext import Filters
 import boto3, requests
 import pprint
 
-token = '709661490:AAG6OK_phXyJ1E2_ALwK5HR0eylsTEjBd5A'
+token = ''
 REQUEST_KWARGS = {
-    'proxy_url': 'socks5://vilunov.me:1488/'
+    
 }
 
 s3 = boto3.resource('s3')
