@@ -5,9 +5,8 @@ from telegram.ext import Filters
 import boto3, requests
 import pprint
 
-token = ''
+token =
 REQUEST_KWARGS = {
-    ''
 }
 
 s3 = boto3.resource('s3')
@@ -26,7 +25,8 @@ def receive_photo(bot, update):
     bot.sendMessage(chat_id=update.message.chat_id,
                     text="Great, got your photo! Here's a list of things I can do to it:\n\n"
                          "/detect_emotions - is a guy on your photo sad? Or maybe you want to know if a group of people are staring at you with anger?\n\n"
-                         "/detect_age - I will magically guess your age... Or your frineds'...")
+                         "/detect_age - I will magically guess your age... Or your frineds'..."
+                         "/detect_beard")
     filePath = newFile.file_path
     truePath = filePath[filePath.find('photos'):]
     url = 'https://api.telegram.org/file/bot' + token + '/' + truePath
@@ -85,6 +85,42 @@ def detect_age(bot, update):
         bot.sendMessage(chat_id=update.message.chat_id, text=message)
 
 
+def detect_beard(bot, update):
+    print('detect_beard')
+    global url
+    response = requests.get(url)
+    response_content = response.content
+    rekognition_response = rekognition.detect_faces(Image={'Bytes': response_content}, Attributes=['ALL'])
+    rekognition_response_new = rekognition.detect_labels(Image={'Bytes': response_content}, Attributes=['ALL'])
+    faces = rekognition_response['FaceDetails']
+    pprint.pprint(rekognition_response_new)
+    if len(faces) > 1:
+        bot.sendMessage(chat_id=update.message.chat_id,
+                        text="There are multiple people in this photo! I will analyze them one-by-one:")
+        for i in range(0, len(faces)):
+            message = "Person number " + str(i + 1) + " "
+            beard = faces[i]['Beard']
+            conf = beard['Confidence']
+            has_beard = beard['Value']
+            if has_beard:
+                beard_out = "has a beard with " + ("%.2f" % conf) + '% probability. \n'
+            else:
+                beard_out = "doesn't have a beard with " + ("%.2f" % conf) + '% probability. \n'
+            message += beard_out
+            bot.sendMessage(chat_id=update.message.chat_id, text=message)
+    else:
+        message = 'This person '
+        beard = faces[0]['Beard']
+        conf = beard['Confidence']
+        has_beard = beard['Value']
+        if has_beard:
+            beard_out = "has a beard with " + ("%.2f" % conf) + '% probability. \n'
+        else:
+            beard_out = "doesn't have a beard with " + ("%.2f" % conf) + '% probability. \n'
+        message += beard_out
+        bot.sendMessage(chat_id=update.message.chat_id, text=message)
+
+
 updater = Updater(token=token, request_kwargs=REQUEST_KWARGS)
 dispatcher = updater.dispatcher
 
@@ -92,11 +128,13 @@ start_handler = CommandHandler('start', start)
 receive_photo_handler = MessageHandler(Filters.photo, receive_photo)
 detect_emotions_handler = CommandHandler('detect_emotions', detect_emotions)
 detect_age_handler = CommandHandler('detect_age', detect_age)
+detect_beard_handler = CommandHandler('detect_beard', detect_beard)
 
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(receive_photo_handler)
 dispatcher.add_handler(detect_emotions_handler)
 dispatcher.add_handler(detect_age_handler)
+dispatcher.add_handler(detect_beard_handler)
 
 
 updater.start_polling()
