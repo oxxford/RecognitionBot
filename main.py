@@ -7,7 +7,7 @@ import pprint
 
 token = ''
 REQUEST_KWARGS = {
-    ''
+    #'proxy_url': 'socks5://vilunov.me:1488/'
 }
 
 s3 = boto3.resource('s3')
@@ -31,9 +31,16 @@ def receive_photo(bot, update):
     truePath = filePath[filePath.find('photos'):]
     url = 'https://api.telegram.org/file/bot' + token + '/' + truePath
 
+def check_photo_presence(bot, update):
+    global url
+    if url == '':
+        bot.send_message(chat_id=update.message.chat_id,
+                         text = "I cannot analyze void :(\nSend me a photo to analyze, please")
+
 def detect_emotions(bot, update):
     print('detect_emotions')
     global url
+    check_photo_presence(bot, update)
     response = requests.get(url)
     response_content = response.content
     rekognition_response = rekognition.detect_faces(Image={'Bytes': response_content}, Attributes=['ALL'])
@@ -63,6 +70,7 @@ def detect_emotions(bot, update):
 def detect_age(bot, update):
     print('detect_age')
     global url
+    check_photo_presence(bot, update)
     response = requests.get(url)
     response_content = response.content
     rekognition_response = rekognition.detect_faces(Image={'Bytes': response_content}, Attributes=['ALL'])
