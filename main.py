@@ -4,10 +4,10 @@ from telegram.ext import MessageHandler
 from telegram.ext import Filters
 import boto3, requests
 import pprint
+from PIL import Image, ImageDraw, ImageFont
 
-token = '709661490:AAG6OK_phXyJ1E2_ALwK5HR0eylsTEjBd5A'
+token =
 REQUEST_KWARGS = {
-    #'proxy_url': 'socks5://vilunov.me:1488/'
 }
 
 s3 = boto3.resource('s3')
@@ -38,6 +38,24 @@ def check_photo_presence(bot, update):
         bot.send_message(chat_id=update.message.chat_id,
                          text = "I cannot analyze void :(\nSend me a photo to analyze, please")
 
+def draw_rectangles(response_content, faces):
+    file = open('/tmp/myimage.jpeg', 'wb')
+    file.write(bytearray(response_content))
+    file.close()
+    photo = "/tmp/myimage.jpeg"
+    image = Image.open(open(photo, 'rb'))
+    width, height = image.size
+    draw = ImageDraw.Draw(image)
+    font = ImageFont.truetype("Verdana.ttf", size=30)
+    for i in range(len(faces)):
+        box = faces[i]['BoundingBox']
+        left = width * box['Left']
+        top = height * box['Top']
+        draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])], width=5)
+        draw.rectangle([left - 20, top - 20, left + 10, top + 10], fill=(42, 50, 59))
+        draw.text((left - 15, top - 25), str(i+1), fill=(255,255,255), font=font)
+    image.save("/tmp/myimage.jpeg")
+
 def detect_emotions(bot, update):
     print('detect_emotions')
     global url
@@ -58,6 +76,8 @@ def detect_emotions(bot, update):
                 em_out = ("%.2f" % conf) + '% probability that person in this photo is ' + type + '\n'
                 message += em_out
             bot.sendMessage(chat_id=update.message.chat_id, text=message)
+        draw_rectangles(response_content, faces)
+        bot.send_photo(chat_id=update.message.chat_id, photo=open("/tmp/myimage.jpeg", 'rb'))
     else:
         message = 'There is\n'
         emotions = faces[0]['Emotions']
@@ -86,6 +106,8 @@ def detect_age(bot, update):
             low = age['Low']
             message += str(low) + " to " + str(high) + " years old"
             bot.sendMessage(chat_id=update.message.chat_id, text=message)
+        draw_rectangles(response_content, faces)
+        bot.send_photo(chat_id=update.message.chat_id, photo=open("/tmp/myimage.jpeg", 'rb'))
     else:
         age = faces[0]['AgeRange']
         high = age['High']
@@ -114,6 +136,8 @@ def detect_beard(bot, update):
                 beard_out = "doesn't have a beard with " + ("%.2f" % conf) + '% probability. \n'
             message += beard_out
             bot.sendMessage(chat_id=update.message.chat_id, text=message)
+        draw_rectangles(response_content, faces)
+        bot.send_photo(chat_id=update.message.chat_id, photo=open("/tmp/myimage.jpeg", 'rb'))
     else:
         message = 'This person '
         beard = faces[0]['Beard']
