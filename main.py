@@ -7,7 +7,7 @@ import io
 import pprint
 from PIL import Image, ImageDraw, ImageFont
 
-token = '709661490:AAG6OK_phXyJ1E2_ALwK5HR0eylsTEjBd5A'
+token = ''
 REQUEST_KWARGS = {
 }
 
