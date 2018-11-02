@@ -99,9 +99,7 @@ def detect_beard(bot, update):
     response = requests.get(url)
     response_content = response.content
     rekognition_response = rekognition.detect_faces(Image={'Bytes': response_content}, Attributes=['ALL'])
-    rekognition_response_new = rekognition.detect_labels(Image={'Bytes': response_content}, Attributes=['ALL'])
     faces = rekognition_response['FaceDetails']
-    pprint.pprint(rekognition_response_new)
     if len(faces) > 1:
         bot.sendMessage(chat_id=update.message.chat_id,
                         text="There are multiple people in this photo! I will analyze them one-by-one:")
