@@ -3,10 +3,11 @@ from telegram.ext import CommandHandler
 from telegram.ext import MessageHandler
 from telegram.ext import Filters
 import boto3, requests
+import io
 import pprint
 from PIL import Image, ImageDraw, ImageFont
 
-token = ''
+token = '709661490:AAG6OK_phXyJ1E2_ALwK5HR0eylsTEjBd5A'
 REQUEST_KWARGS = {
 }
 
@@ -29,7 +30,7 @@ def receive_photo(bot, update):
                     text="Great, got your photo! Here's a list of things I can do to it:\n\n"
                          "/detect_emotions - is a guy on your photo sad? Or maybe you want to know if a group of people are staring at you with anger?\n\n"
                          "/detect_age - I will magically guess your age... Or your frineds'...\n\n"
-                         "/detect_beard\n\n"
+                         "/detect_beard - got any hairy dudes on your photo? Be sure that we will find that out :)\n\n"
                          "/celebrities - who the fuck is this guy???")
     filePath = newFile.file_path
     truePath = filePath[filePath.find('photos'):]
@@ -42,12 +43,12 @@ def check_photo_presence(bot, update):
         bot.send_message(chat_id=update.message.chat_id,
                          text = "I cannot analyze void :(\nSend me a photo to analyze, please")
 
-def draw_rectangles(response_content, faces):
-    file = open('/tmp/myimage.jpeg', 'wb')
-    file.write(bytearray(response_content))
-    file.close()
-    photo = "/tmp/myimage.jpeg"
-    image = Image.open(open(photo, 'rb'))
+def draw_rectangles(response_content, faces, bot , update):
+    object = s3.Object('cc-bot', 'myimage.jpeg')
+    object.put(Body=response_content)
+    file_stream = io.BytesIO()
+    object.download_fileobj(file_stream)
+    image = Image.open(file_stream)
     width, height = image.size
     draw = ImageDraw.Draw(image)
     font = ImageFont.truetype("Verdana.ttf", size=30)
@@ -58,7 +59,13 @@ def draw_rectangles(response_content, faces):
         draw.rectangle([left, top, left + (width * box['Width']), top + (height * box['Height'])], width=5)
         draw.rectangle([left - 20, top - 20, left + 10, top + 10], fill=(42, 50, 59))
         draw.text((left - 15, top - 25), str(i+1), fill=(255,255,255), font=font)
-    image.save("/tmp/myimage.jpeg")
+    output = io.BytesIO()
+    image.save(output, 'JPEG')
+    output.seek(0)
+    bot.send_photo(chat_id=update.message.chat_id, photo=output)
+    object.delete()
+    file_stream.close()
+    output.close()
 
 def detect_emotions(bot, update):
     print('detect_emotions')
@@ -71,6 +78,7 @@ def detect_emotions(bot, update):
     if len(faces) > 1:
         bot.sendMessage(chat_id=update.message.chat_id,
                        text="There are multiple people in this photo! I will analyze them one-by-one:")
+        draw_rectangles(response_content, faces, bot, update)
         for i in range (0, len(faces)):
             message = "Person number " + str(i+1) + "\n"
             emotions = faces[i]['Emotions']
@@ -80,8 +88,6 @@ def detect_emotions(bot, update):
                 em_out = ("%.2f" % conf) + '% probability that person in this photo is ' + type + '\n'
                 message += em_out
             bot.sendMessage(chat_id=update.message.chat_id, text=message)
-        draw_rectangles(response_content, faces)
-        bot.send_photo(chat_id=update.message.chat_id, photo=open("/tmp/myimage.jpeg", 'rb'))
     else:
         message = 'There is\n'
         emotions = faces[0]['Emotions']
@@ -104,6 +110,7 @@ def detect_age(bot, update):
     if len(faces) > 1:
         bot.sendMessage(chat_id=update.message.chat_id,
                         text="There are multiple people in this photo! I will analyze them one-by-one:")
+        draw_rectangles(response_content, faces, bot, update)
         for i in range(0, len(faces)):
             message = "Person number " + str(i + 1) + " is approximately "
             age = faces[i]['AgeRange']
@@ -111,8 +118,6 @@ def detect_age(bot, update):
             low = age['Low']
             message += str(low) + " to " + str(high) + " years old"
             bot.sendMessage(chat_id=update.message.chat_id, text=message)
-        draw_rectangles(response_content, faces)
-        bot.send_photo(chat_id=update.message.chat_id, photo=open("/tmp/myimage.jpeg", 'rb'))
     else:
         age = faces[0]['AgeRange']
         high = age['High']
@@ -123,6 +128,7 @@ def detect_age(bot, update):
 def detect_beard(bot, update):
     print('detect_beard')
     global url
+    check_photo_presence(bot, update)
     response = requests.get(url)
     response_content = response.content
     rekognition_response = rekognition.detect_faces(Image={'Bytes': response_content}, Attributes=['ALL'])
@@ -130,6 +136,7 @@ def detect_beard(bot, update):
     if len(faces) > 1:
         bot.sendMessage(chat_id=update.message.chat_id,
                         text="There are multiple people in this photo! I will analyze them one-by-one:")
+        draw_rectangles(response_content, faces, bot, update)
         for i in range(0, len(faces)):
             message = "Person number " + str(i + 1) + " "
             beard = faces[i]['Beard']
@@ -141,8 +148,6 @@ def detect_beard(bot, update):
                 beard_out = "doesn't have a beard with " + ("%.2f" % conf) + '% probability. \n'
             message += beard_out
             bot.sendMessage(chat_id=update.message.chat_id, text=message)
-        draw_rectangles(response_content, faces)
-        bot.send_photo(chat_id=update.message.chat_id, photo=open("/tmp/myimage.jpeg", 'rb'))
     else:
         message = 'This person '
         beard = faces[0]['Beard']
@@ -159,6 +164,7 @@ def detect_beard(bot, update):
 def detect_celebrities(bot, update):
     print('detect_celebrities')
     global url
+    check_photo_presence(bot, update)
     response = requests.get(url)
     response_content = response.content
     rekognition_response = rekognition.recognize_celebrities(Image={'Bytes': response_content})
