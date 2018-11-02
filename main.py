@@ -6,7 +6,7 @@ import boto3, requests
 import pprint
 from PIL import Image, ImageDraw, ImageFont
 
-token =
+token = ''
 REQUEST_KWARGS = {
 }
 
@@ -15,9 +15,11 @@ ssm = boto3.client('ssm')
 rekognition = boto3.client('rekognition')
 url = ''
 
+
 def start(bot, update):
     print('/start')
     bot.send_message(chat_id=update.message.chat_id, text="Hi! I'm Image recognition bot. To start, send me a photo")
+
 
 def receive_photo(bot, update):
     global url
@@ -26,11 +28,13 @@ def receive_photo(bot, update):
     bot.sendMessage(chat_id=update.message.chat_id,
                     text="Great, got your photo! Here's a list of things I can do to it:\n\n"
                          "/detect_emotions - is a guy on your photo sad? Or maybe you want to know if a group of people are staring at you with anger?\n\n"
-                         "/detect_age - I will magically guess your age... Or your frineds'..."
-                         "/detect_beard")
+                         "/detect_age - I will magically guess your age... Or your frineds'...\n\n"
+                         "/detect_beard\n\n"
+                         "/celebrities - who the fuck is this guy???")
     filePath = newFile.file_path
     truePath = filePath[filePath.find('photos'):]
     url = 'https://api.telegram.org/file/bot' + token + '/' + truePath
+
 
 def check_photo_presence(bot, update):
     global url
@@ -64,7 +68,7 @@ def detect_emotions(bot, update):
     response_content = response.content
     rekognition_response = rekognition.detect_faces(Image={'Bytes': response_content}, Attributes=['ALL'])
     faces = rekognition_response['FaceDetails']
-    if len(faces) > 1 :
+    if len(faces) > 1:
         bot.sendMessage(chat_id=update.message.chat_id,
                        text="There are multiple people in this photo! I will analyze them one-by-one:")
         for i in range (0, len(faces)):
@@ -87,6 +91,7 @@ def detect_emotions(bot, update):
             em_out = ("%.2f" % conf) + '% probability that person in this photo is ' + type +'\n'
             message += em_out
         bot.sendMessage(chat_id=update.message.chat_id, text=message)
+
 
 def detect_age(bot, update):
     print('detect_age')
@@ -151,6 +156,22 @@ def detect_beard(bot, update):
         bot.sendMessage(chat_id=update.message.chat_id, text=message)
 
 
+def detect_celebrities(bot, update):
+    print('detect_celebrities')
+    global url
+    response = requests.get(url)
+    response_content = response.content
+    rekognition_response = rekognition.recognize_celebrities(Image={'Bytes': response_content})
+    celebrity = rekognition_response['CelebrityFaces']
+    if len(celebrity) > 0:
+        print(celebrity)
+        bot.sendMessage(chat_id=update.message.chat_id,
+                        text="Hello, " + celebrity[0]['Name'])
+    else:
+        bot.sendMessage(chat_id=update.message.chat_id,
+                        text="You are not a celebrity, sorry((")
+
+
 updater = Updater(token=token)
 dispatcher = updater.dispatcher
 
@@ -158,12 +179,14 @@ start_handler = CommandHandler('start', start)
 receive_photo_handler = MessageHandler(Filters.photo, receive_photo)
 detect_emotions_handler = CommandHandler('detect_emotions', detect_emotions)
 detect_age_handler = CommandHandler('detect_age', detect_age)
+detect_celebrities_handler = CommandHandler('celebrities', detect_celebrities)
 detect_beard_handler = CommandHandler('detect_beard', detect_beard)
 
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(receive_photo_handler)
 dispatcher.add_handler(detect_emotions_handler)
 dispatcher.add_handler(detect_age_handler)
+dispatcher.add_handler(detect_celebrities_handler)
 dispatcher.add_handler(detect_beard_handler)
 
 
