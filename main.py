@@ -61,11 +61,8 @@ def build_masked_image(source, mask, boxes):
         source.paste(scaled_mask, box[:4], scaled_mask)
 
 
-def ninjafy(image_bytes, mask, bot, update):
-    object = s3.Object('cc-bot', 'myimage.jpg')
-    object.put(Body=image_bytes)
-    file_stream = io.BytesIO()
-    object.download_fileobj(file_stream)
+def get_masked_image(image_bytes, mask, bot, update):
+    file_stream = io.BytesIO(image_bytes)
     image = Image.open(file_stream)
     boxes = get_face_boxes(get_faces(image_bytes), image.size)
     build_masked_image(image, mask, boxes)
@@ -73,7 +70,6 @@ def ninjafy(image_bytes, mask, bot, update):
     image.save(output, 'JPEG')
     output.seek(0)
     bot.send_photo(chat_id=update.message.chat_id, photo=output)
-    object.delete()
     file_stream.close()
     output.close()
 
@@ -106,7 +102,7 @@ def replace_faces(bot, update):
     print('replace_faces')
     check_photo_presence(bot, update)
     image_bytes = get_image()
-    ninjafy(image_bytes, MASK, bot, update)
+    get_masked_image(image_bytes, MASK, bot, update)
 
 
 def draw_rectangles(image_bytes, faces, bot, update):
