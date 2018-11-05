@@ -79,6 +79,7 @@ def get_masked_image(image_bytes, mask, bot, update):
     file_stream.close()
     output.close()
     waiting_mask = False
+    send_finish_message(bot, update)
 
 
 def receive_photo(bot, update):
@@ -215,7 +216,7 @@ def detect_emotions(bot, update):
             em_out = ("%.2f" % conf) + '% probability that person in this photo is ' + type + '\n'
             message += em_out
         bot.sendMessage(chat_id=update.message.chat_id, text=message)
-
+    send_finish_message(bot, update)
 
 def detect_age(bot, update):
     print('detect_age')
@@ -239,6 +240,7 @@ def detect_age(bot, update):
         low = age['Low']
         message = "Person in this photo is approximately " + str(low) + " to " + str(high) + " years old"
         bot.sendMessage(chat_id=update.message.chat_id, text=message)
+    send_finish_message(bot, update)
 
 
 def detect_beard(bot, update):
@@ -272,6 +274,7 @@ def detect_beard(bot, update):
             beard_out = "doesn't have a beard with " + ("%.2f" % conf) + '% probability. \n'
         message += beard_out
         bot.sendMessage(chat_id=update.message.chat_id, text=message)
+    send_finish_message(bot, update)
 
 
 def detect_celebrities(bot, update):
@@ -293,7 +296,18 @@ def detect_celebrities(bot, update):
     else:
         bot.sendMessage(chat_id=update.message.chat_id,
                         text="You are not a celebrity, sorry 🤷‍♂️")
+    send_finish_message(bot, update)
 
+def send_finish_message(bot, update):
+    bot.send_message(chat_id=update.message.chat_id,
+                     text="Analysis is finished, you can send me a new photo, or call any of following commands to work with the current one")
+    bot.send_message(chat_id=update.message.chat_id,
+                     text="/detect_emotions - is a guy on your photo sad 😭? Or maybe you want to know "
+                          "if a group of people are staring at you with anger 😡?\n\n"
+                          "/detect_age - I will magically guess your age... Or your frineds'...\n\n"
+                          "/detect_beard - got any hairy dudes on your photo 🧔? Be sure that we will find that out :)\n\n"
+                          "/celebrities - is this a Leonardo DiCaprio?!\n\n"
+                          "/replace_faces - replace their faces with one of default masks or a custom one")
 
 class FilterPhoto(BaseFilter):
     def filter(self, message):
