@@ -7,7 +7,7 @@ from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import Updater
 
-token = ''
+token = '787510319:AAE0EDSDeYJQWRa5ogfxK07JFrTUvpEHIUw'
 REQUEST_KWARGS = {}
 
 s3 = boto3.resource('s3')
@@ -306,7 +306,7 @@ def send_finish_message(bot, update):
                           "if a group of people are staring at you with anger 😡?\n\n"
                           "/detect_age - I will magically guess your age... Or your frineds'...\n\n"
                           "/detect_beard - got any hairy dudes on your photo 🧔? Be sure that we will find that out :)\n\n"
-                          "/celebrities - is this a Leonardo DiCaprio?!\n\n"
+                          "/detect_celebrities - is this a Leonardo DiCaprio?!\n\n"
                           "/replace_faces - replace their faces with one of default masks or a custom one")
 
 class FilterPhoto(BaseFilter):
@@ -327,7 +327,7 @@ receive_photo_handler = MessageHandler(FilterPhoto(), receive_photo)
 receive_mask_handler = MessageHandler(FilterMask(), receive_mask)
 detect_emotions_handler = CommandHandler('detect_emotions', detect_emotions)
 detect_age_handler = CommandHandler('detect_age', detect_age)
-detect_celebrities_handler = CommandHandler('celebrities', detect_celebrities)
+detect_celebrities_handler = CommandHandler('detect_celebrities', detect_celebrities)
 detect_beard_handler = CommandHandler('detect_beard', detect_beard)
 replace_faces_handler = CommandHandler('replace_faces', replace_faces)
 default_mask_handler = CommandHandler('default_mask', receive_mask)
