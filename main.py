@@ -7,7 +7,7 @@ from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import Updater
 
-token = '709661490:AAG6OK_phXyJ1E2_ALwK5HR0eylsTEjBd5A'
+token = ''
 REQUEST_KWARGS = {}
 
 s3 = boto3.resource('s3')
@@ -33,11 +33,6 @@ def get_image(image_url):
 def get_photo():
     global photo_url
     return get_image(photo_url)
-
-
-def get_mask():
-    global default_mask_url
-    return get_image(default_mask_url)
 
 
 def get_faces(image_bytes):
@@ -101,7 +96,7 @@ def receive_photo(bot, update):
                          "/detect_age - I will magically guess your age... Or your frineds'...\n\n"
                          "/detect_beard - got any hairy dudes on your photo? Be sure that we will find that out :)\n\n"
                          "/celebrities - who the fuck is this guy???\n\n"
-                         "/replace_faces - replace their faces with a mask")
+                         "/replace_faces - replace their faces with one of default masks or a custom one")
     filePath = newFile.file_path
     truePath = filePath[filePath.find('photos'):]
     photo_url = 'https://api.telegram.org/file/bot' + token + '/' + truePath
@@ -116,12 +111,11 @@ def receive_mask(bot, update):
     print('receive_mask')
     if update.message.text == '/default_mask':
         print('default_mask')
-        # bot.send_message(chat_id=update.message.chat_id,
-        #                  text="Сhoose one of the default masks:\n\n"
-        #                       "/ninja - become AWS ninja\n"
-        #                       "/cat - everyone will be cutie kitty-cats :3\n"
-        #                       "/spiderman - become a superhero")
-        mask_bytes = get_mask()
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="Сhoose one of the default masks:\n\n"
+                              "/ninja - become an AWS ninja\n"
+                              "/cat - everyone will be cutie kitty-cats :3\n"
+                              "/spiderman - become a superhero")
     else:
         print('not default_mask')
         file_id = update.message.photo[-1].file_id
@@ -130,6 +124,20 @@ def receive_mask(bot, update):
         truePath = filePath[filePath.find('photos'):]
         mask_url = 'https://api.telegram.org/file/bot' + token + '/' + truePath
         mask_bytes = get_image(mask_url)
+        image_bytes = get_photo()
+        file_stream = io.BytesIO(mask_bytes)
+        mask = Image.open(file_stream)
+        get_masked_image(image_bytes, mask, bot, update)
+        file_stream.close()
+
+def choose_def_mask(bot, update):
+    choice = update.message.text
+    if choice == '/ninja':
+        mask_bytes = get_image('https://s3.amazonaws.com/cc-bot/ninja_mask.png')
+    if choice == '/cat':
+        mask_bytes = get_image('https://s3.amazonaws.com/cc-bot/cat_mask.png')
+    if choice == '/spiderman':
+        mask_bytes = get_image('https://s3.amazonaws.com/cc-bot/spiderman_mask.png')
     image_bytes = get_photo()
     file_stream = io.BytesIO(mask_bytes)
     mask = Image.open(file_stream)
@@ -153,8 +161,8 @@ def replace_faces(bot, update):
     waiting_mask = True
     print('replace_faces')
     bot.sendMessage(chat_id=update.message.chat_id,
-                    text='/default_mask - to use the default "AWS Ninja" mask\n\n'
-                         'or upload the mask image')
+                    text='/default_mask - choose one of our three default masks\n\n'
+                         'or you can upload a mask of your choice below')
 
 
 def draw_rectangles(image_bytes, faces, bot, update):
@@ -305,6 +313,9 @@ detect_celebrities_handler = CommandHandler('celebrities', detect_celebrities)
 detect_beard_handler = CommandHandler('detect_beard', detect_beard)
 replace_faces_handler = CommandHandler('replace_faces', replace_faces)
 default_mask_handler = CommandHandler('default_mask', receive_mask)
+cat_mask_handler = CommandHandler('cat', choose_def_mask)
+ninja_mask_handler = CommandHandler('ninja', choose_def_mask)
+spiderman_mask_handler = CommandHandler('spiderman', choose_def_mask)
 
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(receive_photo_handler)
@@ -315,5 +326,8 @@ dispatcher.add_handler(detect_celebrities_handler)
 dispatcher.add_handler(detect_beard_handler)
 dispatcher.add_handler(replace_faces_handler)
 dispatcher.add_handler(default_mask_handler)
+dispatcher.add_handler(cat_mask_handler)
+dispatcher.add_handler(spiderman_mask_handler)
+dispatcher.add_handler(ninja_mask_handler)
 
 updater.start_polling()
