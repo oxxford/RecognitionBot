@@ -2,7 +2,7 @@ import io
 import boto3
 import requests
 from PIL import Image, ImageDraw, ImageFont
-from telegram.ext import CommandHandler
+from telegram.ext import CommandHandler, BaseFilter
 from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import Updater
@@ -13,8 +13,9 @@ REQUEST_KWARGS = {}
 s3 = boto3.resource('s3')
 ssm = boto3.client('ssm')
 rekognition = boto3.client('rekognition')
-image_url = ''
-MASK = Image.open("mask.png")
+photo_url = ''
+default_mask_url = 'https://raw.githubusercontent.com/aws-samples/aws-rekognition-workshop-twitter-bot/master/lambda_functions/mask.png'
+waiting_mask = False
 
 
 def start(bot, update):
@@ -22,11 +23,20 @@ def start(bot, update):
     bot.send_message(chat_id=update.message.chat_id, text="Hi! I'm Image recognition bot. To start, send me a photo")
 
 
-def get_image():
-    global image_url
+def get_image(image_url):
     response = requests.get(image_url)
     image_bytes = response.content
     return image_bytes
+
+
+def get_photo():
+    global photo_url
+    return get_image(photo_url)
+
+
+def get_mask():
+    global default_mask_url
+    return get_image(default_mask_url)
 
 
 def get_faces(image_bytes):
@@ -55,12 +65,15 @@ def get_face_boxes(faces, source_size):
 def build_masked_image(source, mask, boxes):
     for box in boxes:
         size = (box[2] - box[0], box[3] - box[1])
-        scaled_mask = mask.rotate(-box[4], expand=1).resize(size, Image.ANTIALIAS)
+        scaled_mask = mask.rotate(-box[4]).resize(size, Image.ANTIALIAS)
         # we cut off the final element of the box because it's the rotation
         source.paste(scaled_mask, box[:4], scaled_mask)
 
 
 def get_masked_image(image_bytes, mask, bot, update):
+    global waiting_mask
+    mask = mask.convert("RGBA")
+    print('get_masked_image')
     file_stream = io.BytesIO(image_bytes)
     image = Image.open(file_stream)
     boxes = get_face_boxes(get_faces(image_bytes), image.size)
@@ -71,10 +84,13 @@ def get_masked_image(image_bytes, mask, bot, update):
     bot.send_photo(chat_id=update.message.chat_id, photo=output)
     file_stream.close()
     output.close()
+    waiting_mask = False
 
 
 def receive_photo(bot, update):
-    global image_url
+    global photo_url, waiting_mask
+    if waiting_mask:
+        return
     file_id = update.message.photo[-1].file_id
     newFile = bot.getFile(file_id)
     bot.sendMessage(chat_id=update.message.chat_id,
@@ -87,21 +103,52 @@ def receive_photo(bot, update):
                          "/replace_faces - replace their faces with a mask")
     filePath = newFile.file_path
     truePath = filePath[filePath.find('photos'):]
-    image_url = 'https://api.telegram.org/file/bot' + token + '/' + truePath
+    photo_url = 'https://api.telegram.org/file/bot' + token + '/' + truePath
+
+
+def receive_mask(bot, update):
+    global waiting_mask
+    if not check_photo_presence(bot, update):
+        return
+    if not waiting_mask:
+        return
+    print('receive_mask')
+    if update.message.text == '/default_mask':
+        print('default_mask')
+        mask_bytes = get_mask()
+    else:
+        print('not default_mask')
+        file_id = update.message.photo[-1].file_id
+        file = bot.getFile(file_id)
+        filePath = file.file_path
+        truePath = filePath[filePath.find('photos'):]
+        mask_url = 'https://api.telegram.org/file/bot' + token + '/' + truePath
+        mask_bytes = get_image(mask_url)
+    image_bytes = get_photo()
+    file_stream = io.BytesIO(mask_bytes)
+    mask = Image.open(file_stream)
+    get_masked_image(image_bytes, mask, bot, update)
+    file_stream.close()
 
 
 def check_photo_presence(bot, update):
-    global image_url
-    if image_url == '':
+    global photo_url
+    if photo_url == '':
         bot.send_message(chat_id=update.message.chat_id,
                          text="I cannot analyze void :(\nSend me a photo to analyze, please")
+        return False
+    return True
 
 
 def replace_faces(bot, update):
+    global waiting_mask
+    if not check_photo_presence(bot, update):
+        return
+    waiting_mask = True
     print('replace_faces')
-    check_photo_presence(bot, update)
-    image_bytes = get_image()
-    get_masked_image(image_bytes, MASK, bot, update)
+    bot.sendMessage(chat_id=update.message.chat_id,
+                    text='/default_mask - to use the default "AWS Ninja" mask\n\n'
+                         'or upload the mask image')
 
 
 def draw_rectangles(image_bytes, faces, bot, update):
@@ -132,7 +179,7 @@ def draw_rectangles(image_bytes, faces, bot, update):
 def detect_emotions(bot, update):
     print('detect_emotions')
     check_photo_presence(bot, update)
-    image_bytes = get_image()
+    image_bytes = get_photo()
     faces = get_faces(image_bytes)
     if len(faces) > 1:
         bot.sendMessage(chat_id=update.message.chat_id,
@@ -161,7 +208,7 @@ def detect_emotions(bot, update):
 def detect_age(bot, update):
     print('detect_age')
     check_photo_presence(bot, update)
-    image_bytes = get_image()
+    image_bytes = get_photo()
     faces = get_faces(image_bytes)
     if len(faces) > 1:
         bot.sendMessage(chat_id=update.message.chat_id,
@@ -185,7 +232,7 @@ def detect_age(bot, update):
 def detect_beard(bot, update):
     print('detect_beard')
     check_photo_presence(bot, update)
-    image_bytes = get_image()
+    image_bytes = get_photo()
     faces = get_faces(image_bytes)
     if len(faces) > 1:
         bot.sendMessage(chat_id=update.message.chat_id,
@@ -218,7 +265,7 @@ def detect_beard(bot, update):
 def detect_celebrities(bot, update):
     print('detect_celebrities')
     check_photo_presence(bot, update)
-    image_bytes = get_image()
+    image_bytes = get_photo()
     rekognition_response = rekognition.recognize_celebrities(Image={'Bytes': image_bytes})
     celebrities = rekognition_response['CelebrityFaces']
     if len(celebrities) > 0:
@@ -230,23 +277,37 @@ def detect_celebrities(bot, update):
                         text="You are not a celebrity, sorry((")
 
 
+class FilterPhoto(BaseFilter):
+    def filter(self, message):
+        return bool(message.photo) and not waiting_mask
+
+
+class FilterMask(BaseFilter):
+    def filter(self, message):
+        return bool(message.photo) and waiting_mask
+
+
 updater = Updater(token=token)
 dispatcher = updater.dispatcher
 
 start_handler = CommandHandler('start', start)
-receive_photo_handler = MessageHandler(Filters.photo, receive_photo)
+receive_photo_handler = MessageHandler(FilterPhoto(), receive_photo)
+receive_mask_handler = MessageHandler(FilterMask(), receive_mask)
 detect_emotions_handler = CommandHandler('detect_emotions', detect_emotions)
 detect_age_handler = CommandHandler('detect_age', detect_age)
 detect_celebrities_handler = CommandHandler('celebrities', detect_celebrities)
 detect_beard_handler = CommandHandler('detect_beard', detect_beard)
 replace_faces_handler = CommandHandler('replace_faces', replace_faces)
+default_mask_handler = CommandHandler('default_mask', receive_mask)
 
 dispatcher.add_handler(start_handler)
 dispatcher.add_handler(receive_photo_handler)
+dispatcher.add_handler(receive_mask_handler)
 dispatcher.add_handler(detect_emotions_handler)
 dispatcher.add_handler(detect_age_handler)
 dispatcher.add_handler(detect_celebrities_handler)
 dispatcher.add_handler(detect_beard_handler)
 dispatcher.add_handler(replace_faces_handler)
+dispatcher.add_handler(default_mask_handler)
 
 updater.start_polling()
