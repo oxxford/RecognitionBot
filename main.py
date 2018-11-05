@@ -14,14 +14,12 @@ s3 = boto3.resource('s3')
 ssm = boto3.client('ssm')
 rekognition = boto3.client('rekognition')
 photo_url = ''
-default_mask_url = 'https://s3.amazonaws.com/cc-bot/ninja_mask.png'
-#default_mask_url = 'https://raw.githubusercontent.com/aws-samples/aws-rekognition-workshop-twitter-bot/master/lambda_functions/mask.png'
 waiting_mask = False
 
 
 def start(bot, update):
     print('/start')
-    bot.send_message(chat_id=update.message.chat_id, text="Hi! I'm Image recognition bot. To start, send me a photo")
+    bot.send_message(chat_id=update.message.chat_id, text="Hi! I'm an Image recognition bot. To start, send me a photo")
 
 
 def get_image(image_url):
@@ -91,11 +89,11 @@ def receive_photo(bot, update):
     newFile = bot.getFile(file_id)
     bot.sendMessage(chat_id=update.message.chat_id,
                     text="Great, got your photo! Here's a list of things I can do to it:\n\n"
-                         "/detect_emotions - is a guy on your photo sad? Or maybe you want to know "
-                         "if a group of people are staring at you with anger?\n\n"
+                         "/detect_emotions - is a guy on your photo sad 😭? Or maybe you want to know "
+                         "if a group of people are staring at you with anger 😡?\n\n"
                          "/detect_age - I will magically guess your age... Or your frineds'...\n\n"
-                         "/detect_beard - got any hairy dudes on your photo? Be sure that we will find that out :)\n\n"
-                         "/celebrities - who the fuck is this guy???\n\n"
+                         "/detect_beard - got any hairy dudes on your photo 🧔? Be sure that we will find that out :)\n\n"
+                         "/celebrities - is this a Leonardo DiCaprio?!\n\n"
                          "/replace_faces - replace their faces with one of default masks or a custom one")
     filePath = newFile.file_path
     truePath = filePath[filePath.find('photos'):]
@@ -113,8 +111,8 @@ def receive_mask(bot, update):
         print('default_mask')
         bot.send_message(chat_id=update.message.chat_id,
                          text="Сhoose one of the default masks:\n\n"
-                              "/ninja - become an AWS ninja\n"
-                              "/cat - everyone will be cutie kitty-cats :3\n"
+                              "/ninja - become an AWS ninja \n"
+                              "/cat - everyone will be cutie kitty-cats 😻\n"
                               "/spiderman - become a superhero")
     else:
         print('not default_mask')
@@ -149,7 +147,7 @@ def check_photo_presence(bot, update):
     global photo_url
     if photo_url == '':
         bot.send_message(chat_id=update.message.chat_id,
-                         text="I cannot analyze void :(\nSend me a photo to analyze, please")
+                         text="I cannot analyze void 🕳\nSend me a photo to analyze, please")
         return False
     return True
 
@@ -283,12 +281,18 @@ def detect_celebrities(bot, update):
     rekognition_response = rekognition.recognize_celebrities(Image={'Bytes': image_bytes})
     celebrities = rekognition_response['CelebrityFaces']
     if len(celebrities) > 0:
-        for celebrity in celebrities:
+        bot.send_message(chat_id=update.message.chat_id,
+                         text="Wow, this photo shines because of all the stars on it 🌟🌟🌟")
+        faces = []
+        for i in range(0, len(celebrities)):
+            faces.append(celebrities[i]['Face'])
+        draw_rectangles(image_bytes, faces, bot, update)
+        for i in range (0, len(celebrities)):
             bot.sendMessage(chat_id=update.message.chat_id,
-                            text="Hello, " + celebrity['Name'])
+                            text="Hello, celebrity number " + str(i+1) + " . I am sure you are " + celebrities[i]['Name'])
     else:
         bot.sendMessage(chat_id=update.message.chat_id,
-                        text="You are not a celebrity, sorry((")
+                        text="You are not a celebrity, sorry 🤷‍♂️")
 
 
 class FilterPhoto(BaseFilter):
