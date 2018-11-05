@@ -7,7 +7,7 @@ from telegram.ext import Filters
 from telegram.ext import MessageHandler
 from telegram.ext import Updater
 
-token = ''
+token = '787510319:AAE0EDSDeYJQWRa5ogfxK07JFrTUvpEHIUw'
 REQUEST_KWARGS = {}
 
 s3 = boto3.resource('s3')
@@ -284,15 +284,19 @@ def detect_celebrities(bot, update):
     rekognition_response = rekognition.recognize_celebrities(Image={'Bytes': image_bytes})
     celebrities = rekognition_response['CelebrityFaces']
     if len(celebrities) > 0:
-        bot.send_message(chat_id=update.message.chat_id,
-                         text="Wow, this photo shines because of all the stars on it 🌟🌟🌟")
-        faces = []
-        for i in range(0, len(celebrities)):
-            faces.append(celebrities[i]['Face'])
-        draw_rectangles(image_bytes, faces, bot, update)
-        for i in range (0, len(celebrities)):
+        if len(celebrities) > 1:
+            bot.send_message(chat_id=update.message.chat_id,
+                             text="Wow, this photo shines because of all the stars on it 🌟🌟🌟")
+            faces = []
+            for i in range(0, len(celebrities)):
+                faces.append(celebrities[i]['Face'])
+            draw_rectangles(image_bytes, faces, bot, update)
+            for i in range (0, len(celebrities)):
+                bot.sendMessage(chat_id=update.message.chat_id,
+                                text="Hello, celebrity number " + str(i+1) + " . I am sure you are " + celebrities[i]['Name'])
+        else:
             bot.sendMessage(chat_id=update.message.chat_id,
-                            text="Hello, celebrity number " + str(i+1) + " . I am sure you are " + celebrities[i]['Name'])
+                            text="WOW! This must be " + celebrities[0]['Name'])
     else:
         bot.sendMessage(chat_id=update.message.chat_id,
                         text="You are not a celebrity, sorry 🤷‍♂️")
