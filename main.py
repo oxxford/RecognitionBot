@@ -1,5 +1,4 @@
 import io
-
 import boto3
 import requests
 from PIL import Image, ImageDraw, ImageFont
@@ -274,11 +273,11 @@ def detect_celebrities(bot, update):
     check_photo_presence(bot, update)
     image_bytes = get_photo()
     rekognition_response = rekognition.recognize_celebrities(Image={'Bytes': image_bytes})
-    celebrity = rekognition_response['CelebrityFaces']
-    if len(celebrity) > 0:
-        print(celebrity)
-        bot.sendMessage(chat_id=update.message.chat_id,
-                        text="Hello, " + celebrity[0]['Name'])
+    celebrities = rekognition_response['CelebrityFaces']
+    if len(celebrities) > 0:
+        for celebrity in celebrities:
+            bot.sendMessage(chat_id=update.message.chat_id,
+                            text="Hello, " + celebrity['Name'])
     else:
         bot.sendMessage(chat_id=update.message.chat_id,
                         text="You are not a celebrity, sorry((")
