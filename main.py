@@ -15,7 +15,8 @@ s3 = boto3.resource('s3')
 ssm = boto3.client('ssm')
 rekognition = boto3.client('rekognition')
 photo_url = ''
-default_mask_url = 'https://raw.githubusercontent.com/aws-samples/aws-rekognition-workshop-twitter-bot/master/lambda_functions/mask.png'
+default_mask_url = 'https://s3.amazonaws.com/cc-bot/ninja_mask.png'
+#default_mask_url = 'https://raw.githubusercontent.com/aws-samples/aws-rekognition-workshop-twitter-bot/master/lambda_functions/mask.png'
 waiting_mask = False
 
 
@@ -116,6 +117,11 @@ def receive_mask(bot, update):
     print('receive_mask')
     if update.message.text == '/default_mask':
         print('default_mask')
+        # bot.send_message(chat_id=update.message.chat_id,
+        #                  text="Сhoose one of the default masks:\n\n"
+        #                       "/ninja - become AWS ninja\n"
+        #                       "/cat - everyone will be cutie kitty-cats :3\n"
+        #                       "/spiderman - become a superhero")
         mask_bytes = get_mask()
     else:
         print('not default_mask')
